@@ -1,0 +1,1702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Learning Study Tracker Pro</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+        }
+        .streak-flame {
+            animation: flicker 2s ease-in-out infinite;
+        }
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        .contribution-day {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            transition: all 0.15s;
+            cursor: pointer;
+        }
+        .contribution-day:hover {
+            transform: scale(1.4);
+            outline: 2px solid rgba(59, 130, 246, 0.6);
+            z-index: 10;
+            position: relative;
+        }
+        body.dark {
+            background-color: #0f172a;
+        }
+        .dark .bg-white { background-color: #1e293b; }
+        .dark .text-gray-900 { color: #f1f5f9; }
+        .dark .text-gray-600 { color: #cbd5e1; }
+        .dark .text-gray-500 { color: #94a3b8; }
+        .dark .text-gray-700 { color: #e2e8f0; }
+        .dark .text-gray-800 { color: #f1f5f9; }
+        .dark .border-gray-200 { border-color: #334155; }
+        .dark .border-gray-300 { border-color: #475569; }
+        .dark .bg-gray-50 { background-color: #1e293b; }
+        .dark .bg-gray-100 { background-color: #334155; }
+        .dark .bg-gray-200 { background-color: #475569; }
+        
+        @keyframes progress {
+            from { width: 0; }
+        }
+        .progress-bar {
+            animation: progress 1s ease-out;
+        }
+        
+        .focus-mode-active .hidden-in-focus {
+            display: none !important;
+        }
+        
+        .kbd {
+            padding: 2px 6px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+        .dark .kbd {
+            background: #374151;
+            border-color: #4b5563;
+        }
+        
+        /* Timer pulse animation */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .timer-active {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+        .dark .tooltip {
+            background: rgba(255, 255, 255, 0.9);
+            color: black;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 transition-colors duration-200">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
+
+        // ==================== DATA ====================
+        const STUDY_TOPICS = [
+            // Section 5: Transformer Internals
+            { id: 'tf-1', name: 'Self-Attention Mechanism (scaled dot-product)', time: 4, section: '5. Transformer Internals', sectionNum: 5, priority: 'high' },
+            { id: 'tf-2', name: 'Multi-Head Attention and why it works', time: 3, section: '5. Transformer Internals', sectionNum: 5, priority: 'high' },
+            { id: 'tf-3', name: 'Positional Encoding variants', time: 3, section: '5. Transformer Internals', sectionNum: 5, priority: 'medium' },
+            { id: 'tf-4', name: 'Feed-Forward Networks in transformers', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'medium' },
+            { id: 'tf-5', name: 'Layer Normalization vs Batch Normalization', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'medium' },
+            { id: 'tf-6', name: 'Residual Connections and their importance', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'medium' },
+            { id: 'tf-7', name: 'Encoder vs Decoder vs Encoder-Decoder', time: 3, section: '5. Transformer Internals', sectionNum: 5, priority: 'high' },
+            { id: 'tf-8', name: 'Causal (Masked) Attention', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'medium' },
+            { id: 'tf-9', name: 'Cross-Attention in encoder-decoder', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'medium' },
+            { id: 'tf-10', name: 'Token Embeddings and vocabulary', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'low' },
+            { id: 'tf-11', name: 'Attention complexity analysis', time: 2, section: '5. Transformer Internals', sectionNum: 5, priority: 'low' },
+            
+            { id: 'llm-1', name: 'HuggingFace transformers library', time: 4, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'high' },
+            { id: 'llm-2', name: 'HuggingFace datasets library', time: 2, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'high' },
+            { id: 'llm-3', name: 'HuggingFace Model Hub navigation', time: 1, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'medium' },
+            { id: 'llm-4', name: 'HuggingFace tokenizers library', time: 2, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'medium' },
+            { id: 'llm-5', name: 'OpenAI / Anthropic / Cohere APIs', time: 2, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'high' },
+            { id: 'llm-6', name: 'Sentence-transformers for embeddings', time: 2, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'medium' },
+            { id: 'llm-7', name: 'Gradio/Streamlit for demos', time: 3, section: '6. LLM Ecosystem & Tools', sectionNum: 6, priority: 'low' },
+            
+            { id: 'tok-1', name: 'Byte-Pair Encoding (BPE)', time: 3, section: '7. Tokenization', sectionNum: 7, priority: 'high' },
+            { id: 'tok-2', name: 'WordPiece tokenization', time: 2, section: '7. Tokenization', sectionNum: 7, priority: 'medium' },
+            { id: 'tok-3', name: 'SentencePiece', time: 2, section: '7. Tokenization', sectionNum: 7, priority: 'medium' },
+            { id: 'tok-4', name: 'Unigram tokenization', time: 1, section: '7. Tokenization', sectionNum: 7, priority: 'low' },
+            { id: 'tok-5', name: 'Special tokens handling', time: 1, section: '7. Tokenization', sectionNum: 7, priority: 'low' },
+            { id: 'tok-6', name: 'Train a tokenizer', time: 3, section: '7. Tokenization', sectionNum: 7, priority: 'medium' },
+            { id: 'tok-7', name: 'Cost/latency impact analysis', time: 2, section: '7. Tokenization', sectionNum: 7, priority: 'low' },
+            
+            { id: 'prompt-1', name: 'Zero-shot vs Few-shot prompting', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'high' },
+            { id: 'prompt-2', name: 'Chain-of-Thought (CoT) prompting', time: 3, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'high' },
+            { id: 'prompt-3', name: 'Self-Consistency', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'medium' },
+            { id: 'prompt-4', name: 'ReAct pattern', time: 3, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'high' },
+            { id: 'prompt-5', name: 'System vs User vs Assistant roles', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'medium' },
+            { id: 'prompt-6', name: 'Temperature, top-p, top-k sampling', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'medium' },
+            { id: 'prompt-7', name: 'Prompt templates and versioning', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'low' },
+            { id: 'prompt-8', name: 'In-context learning limitations', time: 1, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'low' },
+            { id: 'prompt-9', name: 'Instruction formatting patterns', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'medium' },
+            { id: 'prompt-10', name: 'Guardrail prompt design', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'medium' },
+            { id: 'prompt-11', name: 'Prompt A/B testing', time: 2, section: '8. Prompting & Prompt Engineering', sectionNum: 8, priority: 'low' },
+            
+            { id: 'rag-1', name: 'RAG pipeline overview', time: 2, section: '9. RAG Systems', sectionNum: 9, priority: 'high' },
+            { id: 'rag-2', name: 'Embedding Models selection', time: 3, section: '9. RAG Systems', sectionNum: 9, priority: 'high' },
+            { id: 'rag-3', name: 'FAISS setup', time: 3, section: '9. RAG Systems', sectionNum: 9, priority: 'high' },
+            { id: 'rag-4', name: 'Vector DBs: Pinecone/Chroma/Weaviate', time: 4, section: '9. RAG Systems', sectionNum: 9, priority: 'high' },
+            { id: 'rag-5', name: 'Chunking strategies', time: 4, section: '9. RAG Systems', sectionNum: 9, priority: 'high' },
+            { id: 'rag-6', name: 'Similarity search methods', time: 2, section: '9. RAG Systems', sectionNum: 9, priority: 'medium' },
+            { id: 'rag-7', name: 'Hybrid search (dense+BM25)', time: 3, section: '9. RAG Systems', sectionNum: 9, priority: 'medium' },
+            { id: 'rag-8', name: 'Metadata filtering', time: 2, section: '9. RAG Systems', sectionNum: 9, priority: 'low' },
+            { id: 'rag-9', name: 'Re-ranking techniques', time: 3, section: '9. RAG Systems', sectionNum: 9, priority: 'medium' },
+            { id: 'rag-10', name: 'Context window management', time: 2, section: '9. RAG Systems', sectionNum: 9, priority: 'medium' },
+            { id: 'rag-11', name: 'RAG evaluation metrics', time: 3, section: '9. RAG Systems', sectionNum: 9, priority: 'medium' },
+            { id: 'rag-12', name: 'Hallucination handling', time: 2, section: '9. RAG Systems', sectionNum: 9, priority: 'high' },
+            
+            { id: 'ft-1', name: 'Pretraining vs fine-tuning', time: 2, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'high' },
+            { id: 'ft-2', name: 'Instruction vs chat tuning', time: 2, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'high' },
+            { id: 'ft-3', name: 'Full fine-tuning process', time: 4, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'high' },
+            { id: 'ft-4', name: 'LoRA theory', time: 3, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'high' },
+            { id: 'ft-5', name: 'LoRA implementation', time: 4, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'high' },
+            { id: 'ft-6', name: 'QLoRA', time: 3, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'medium' },
+            { id: 'ft-7', name: 'Prefix/Prompt Tuning', time: 2, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'low' },
+            { id: 'ft-8', name: 'Adapter layers', time: 2, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'low' },
+            { id: 'ft-9', name: 'When to fine-tune decision', time: 1, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'medium' },
+            { id: 'ft-10', name: 'Dataset preparation', time: 3, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'high' },
+            { id: 'ft-11', name: 'Hyperparameter tuning', time: 3, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'medium' },
+            { id: 'ft-12', name: 'Evaluation setup', time: 3, section: '10. Fine-Tuning & PEFT', sectionNum: 10, priority: 'medium' },
+            
+            { id: 'mlops-1', name: 'W&B/MLflow setup', time: 3, section: '11. MLOps & Production', sectionNum: 11, priority: 'high' },
+            { id: 'mlops-2', name: 'Model versioning', time: 2, section: '11. MLOps & Production', sectionNum: 11, priority: 'medium' },
+            { id: 'mlops-3', name: 'CI/CD for ML', time: 4, section: '11. MLOps & Production', sectionNum: 11, priority: 'high' },
+            { id: 'mlops-4', name: 'Docker basics', time: 4, section: '11. MLOps & Production', sectionNum: 11, priority: 'high' },
+            { id: 'mlops-5', name: 'FastAPI model serving', time: 4, section: '11. MLOps & Production', sectionNum: 11, priority: 'high' },
+            { id: 'mlops-6', name: 'vLLM inference server', time: 3, section: '11. MLOps & Production', sectionNum: 11, priority: 'medium' },
+            { id: 'mlops-7', name: 'TGI (Text Gen Inference)', time: 2, section: '11. MLOps & Production', sectionNum: 11, priority: 'medium' },
+            { id: 'mlops-8', name: 'A/B testing setup', time: 3, section: '11. MLOps & Production', sectionNum: 11, priority: 'medium' },
+            { id: 'mlops-9', name: 'Canary deployments', time: 2, section: '11. MLOps & Production', sectionNum: 11, priority: 'low' },
+            { id: 'mlops-10', name: 'Model monitoring', time: 3, section: '11. MLOps & Production', sectionNum: 11, priority: 'high' },
+            { id: 'mlops-11', name: 'Drift detection', time: 2, section: '11. MLOps & Production', sectionNum: 11, priority: 'medium' },
+            { id: 'mlops-12', name: 'Logging/observability', time: 3, section: '11. MLOps & Production', sectionNum: 11, priority: 'medium' },
+            { id: 'mlops-13', name: 'Config-driven experiments', time: 2, section: '11. MLOps & Production', sectionNum: 11, priority: 'low' },
+            
+            { id: 'sec-1', name: 'Prompt injection attacks', time: 3, section: '12. Security & Safety', sectionNum: 12, priority: 'high' },
+            { id: 'sec-2', name: 'Jailbreaking techniques', time: 2, section: '12. Security & Safety', sectionNum: 12, priority: 'medium' },
+            { id: 'sec-3', name: 'Content moderation', time: 3, section: '12. Security & Safety', sectionNum: 12, priority: 'high' },
+            { id: 'sec-4', name: 'PII detection/redaction', time: 3, section: '12. Security & Safety', sectionNum: 12, priority: 'high' },
+            { id: 'sec-5', name: 'Output validation', time: 2, section: '12. Security & Safety', sectionNum: 12, priority: 'medium' },
+            { id: 'sec-6', name: 'Rate limiting', time: 2, section: '12. Security & Safety', sectionNum: 12, priority: 'medium' },
+            
+            { id: 'be-1', name: 'RESTful API design', time: 3, section: '13. Backend Development', sectionNum: 13, priority: 'high' },
+            { id: 'be-2', name: 'FastAPI framework', time: 4, section: '13. Backend Development', sectionNum: 13, priority: 'high' },
+            { id: 'be-3', name: 'JWT/OAuth auth', time: 4, section: '13. Backend Development', sectionNum: 13, priority: 'high' },
+            { id: 'be-4', name: 'Async Python', time: 3, section: '13. Backend Development', sectionNum: 13, priority: 'medium' },
+            { id: 'be-5', name: 'Caching strategies', time: 3, section: '13. Backend Development', sectionNum: 13, priority: 'medium' },
+            { id: 'be-6', name: 'Database indexing', time: 2, section: '13. Backend Development', sectionNum: 13, priority: 'medium' },
+            
+            { id: 'eval-1', name: 'LLM-as-judge evaluation', time: 3, section: '14. Evaluation & Benchmarking', sectionNum: 14, priority: 'high' },
+            { id: 'eval-2', name: 'MMLU / HumanEval', time: 3, section: '14. Evaluation & Benchmarking', sectionNum: 14, priority: 'high' },
+            { id: 'eval-3', name: 'Custom eval datasets', time: 3, section: '14. Evaluation & Benchmarking', sectionNum: 14, priority: 'medium' },
+            { id: 'eval-4', name: 'Hallucination measurement', time: 2, section: '14. Evaluation & Benchmarking', sectionNum: 14, priority: 'medium' },
+            
+            { id: 'inf-1', name: 'KV-Cache theory', time: 2, section: '15. Inference Optimization', sectionNum: 15, priority: 'high' },
+            { id: 'inf-2', name: 'KV-Cache implementation', time: 3, section: '15. Inference Optimization', sectionNum: 15, priority: 'high' },
+            { id: 'inf-3', name: 'Quantization (INT8/INT4)', time: 3, section: '15. Inference Optimization', sectionNum: 15, priority: 'high' },
+            { id: 'inf-4', name: 'Batching strategies', time: 3, section: '15. Inference Optimization', sectionNum: 15, priority: 'medium' },
+            { id: 'inf-5', name: 'Flash Attention', time: 2, section: '15. Inference Optimization', sectionNum: 15, priority: 'medium' },
+            
+            { id: 'sys-1', name: 'High-QPS design', time: 3, section: '16. System Design', sectionNum: 16, priority: 'high' },
+            { id: 'sys-2', name: 'Multi-model routing', time: 3, section: '16. System Design', sectionNum: 16, priority: 'medium' },
+            { id: 'sys-3', name: 'Semantic caching', time: 3, section: '16. System Design', sectionNum: 16, priority: 'medium' },
+            { id: 'sys-4', name: 'Autoscaling logic', time: 2, section: '16. System Design', sectionNum: 16, priority: 'medium' },
+            
+            { id: 'cost-1', name: 'Token cost calculation', time: 2, section: '17. Cost Optimization', sectionNum: 17, priority: 'medium' },
+            { id: 'cost-2', name: 'Prompt compression', time: 2, section: '17. Cost Optimization', sectionNum: 17, priority: 'medium' },
+            { id: 'cost-3', name: 'GPU cost estimation', time: 2, section: '17. Cost Optimization', sectionNum: 17, priority: 'low' },
+        ];
+
+        const PROJECTS = [
+            { id: 'proj-1', name: 'Mini-transformer from scratch', time: 10, section: 'Projects', priority: 'high' },
+            { id: 'proj-2', name: 'HuggingFace chatbot with Gradio', time: 5, section: 'Projects', priority: 'high' },
+            { id: 'proj-3', name: 'Train custom tokenizer', time: 4, section: 'Projects', priority: 'medium' },
+            { id: 'proj-4', name: 'Prompt evaluation framework', time: 6, section: 'Projects', priority: 'medium' },
+            { id: 'proj-5', name: 'Full RAG with PDF ingestion', time: 13, section: 'Projects', priority: 'high' },
+            { id: 'proj-6', name: 'Fine-tune LLaMA with LoRA', time: 11, section: 'Projects', priority: 'high' },
+            { id: 'proj-7', name: 'Deploy LLM with FastAPI', time: 9, section: 'Projects', priority: 'high' },
+            { id: 'proj-8', name: 'Security layer for RAG', time: 5, section: 'Projects', priority: 'medium' },
+            { id: 'proj-9', name: 'Production API with auth', time: 9, section: 'Projects', priority: 'high' },
+            { id: 'proj-10', name: 'Eval suite for RAG app', time: 7, section: 'Projects', priority: 'medium' },
+            { id: 'proj-11', name: 'Optimize model inference 2x', time: 7, section: 'Projects', priority: 'medium' },
+            { id: 'proj-12', name: 'Cost optimization report', time: 5, section: 'Projects', priority: 'low' },
+        ];
+
+        const ALL_ITEMS = [...STUDY_TOPICS, ...PROJECTS];
+
+        // ==================== STORAGE ====================
+        const STORAGE_KEYS = {
+            COMPLETIONS: 'ai_study_completions_v3',
+            NOTES: 'ai_study_notes_v3',
+            GOALS: 'ai_study_goals_v3',
+            DAILY_STATS: 'ai_study_daily_stats_v3',
+            TIMERS: 'ai_study_timers_v3',
+            DARK_MODE: 'ai_study_dark_mode',
+            PREFERENCES: 'ai_study_preferences_v3',
+            QUEUE_STATE: 'ai_study_queue_v3',
+            LAST_SECTION: 'ai_study_last_section_v3'
+        };
+
+        const StorageManager = {
+            get(key, defaultValue = null) {
+                try {
+                    const item = localStorage.getItem(key);
+                    return item ? JSON.parse(item) : defaultValue;
+                } catch (error) {
+                    console.error(`Error reading ${key}:`, error);
+                    return defaultValue;
+                }
+            },
+
+            set(key, value) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                    return true;
+                } catch (error) {
+                    console.error(`Error writing ${key}:`, error);
+                    return false;
+                }
+            },
+
+            getCompletions() {
+                return this.get(STORAGE_KEYS.COMPLETIONS, []);
+            },
+
+            saveCompletions(completions) {
+                return this.set(STORAGE_KEYS.COMPLETIONS, completions);
+            },
+
+            getNotes() {
+                return this.get(STORAGE_KEYS.NOTES, {});
+            },
+
+            saveNotes(notes) {
+                return this.set(STORAGE_KEYS.NOTES, notes);
+            },
+
+            getGoals() {
+                return this.get(STORAGE_KEYS.GOALS, { daily: 5, weekly: 20, history: [] });
+            },
+
+            saveGoals(goals) {
+                return this.set(STORAGE_KEYS.GOALS, goals);
+            },
+
+            getDailyStats() {
+                return this.get(STORAGE_KEYS.DAILY_STATS, {});
+            },
+
+            saveDailyStats(stats) {
+                return this.set(STORAGE_KEYS.DAILY_STATS, stats);
+            },
+
+            getTimers() {
+                return this.get(STORAGE_KEYS.TIMERS, {});
+            },
+
+            saveTimers(timers) {
+                return this.set(STORAGE_KEYS.TIMERS, timers);
+            },
+
+            getDarkMode() {
+                return this.get(STORAGE_KEYS.DARK_MODE, false);
+            },
+
+            saveDarkMode(enabled) {
+                return this.set(STORAGE_KEYS.DARK_MODE, enabled);
+            },
+
+            getPreferences() {
+                return this.get(STORAGE_KEYS.PREFERENCES, {
+                    showCompleted: true,
+                    sortBy: 'smart',
+                    priorityFilter: 'all',
+                    queueSize: 15
+                });
+            },
+
+            savePreferences(prefs) {
+                return this.set(STORAGE_KEYS.PREFERENCES, prefs);
+            },
+
+            getQueueState() {
+                return this.get(STORAGE_KEYS.QUEUE_STATE, { visibleTasks: [] });
+            },
+
+            saveQueueState(state) {
+                return this.set(STORAGE_KEYS.QUEUE_STATE, state);
+            },
+
+            getLastSection() {
+                return this.get(STORAGE_KEYS.LAST_SECTION, null);
+            },
+
+            saveLastSection(section) {
+                return this.set(STORAGE_KEYS.LAST_SECTION, section);
+            },
+
+            exportData() {
+                return {
+                    completions: this.getCompletions(),
+                    notes: this.getNotes(),
+                    goals: this.getGoals(),
+                    dailyStats: this.getDailyStats(),
+                    timers: this.getTimers(),
+                    preferences: this.getPreferences(),
+                    queueState: this.getQueueState(),
+                    exportDate: new Date().toISOString()
+                };
+            },
+
+            importData(data) {
+                if (data.completions) this.saveCompletions(data.completions);
+                if (data.notes) this.saveNotes(data.notes);
+                if (data.goals) this.saveGoals(data.goals);
+                if (data.dailyStats) this.saveDailyStats(data.dailyStats);
+                if (data.timers) this.saveTimers(data.timers);
+                if (data.preferences) this.savePreferences(data.preferences);
+                if (data.queueState) this.saveQueueState(data.queueState);
+            }
+        };
+
+        // ==================== UTILITIES ====================
+        
+        // Calculate streak with proper logic
+        function calculateGlobalStreak(completions) {
+            if (completions.length === 0) return { currentStreak: 0, maxStreak: 0 };
+
+            const dates = [...new Set(completions.map(c => c.completion_date))]
+                .sort((a, b) => new Date(b) - new Date(a));
+
+            let currentStreak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            let expected = new Date(today);
+
+            for (const dateStr of dates) {
+                const date = new Date(dateStr);
+                date.setHours(0, 0, 0, 0);
+                
+                if (date.getTime() === expected.getTime()) {
+                    currentStreak++;
+                    expected.setDate(expected.getDate() - 1);
+                } else if (date < expected) {
+                    break;
+                }
+            }
+
+            let maxStreak = 0;
+            let tempStreak = 1;
+            
+            for (let i = 0; i < dates.length - 1; i++) {
+                const current = new Date(dates[i]);
+                const next = new Date(dates[i + 1]);
+                current.setHours(0, 0, 0, 0);
+                next.setHours(0, 0, 0, 0);
+                
+                const diffDays = Math.round((current - next) / (1000 * 60 * 60 * 24));
+                
+                if (diffDays === 1) {
+                    tempStreak++;
+                } else {
+                    maxStreak = Math.max(maxStreak, tempStreak);
+                    tempStreak = 1;
+                }
+            }
+            maxStreak = Math.max(maxStreak, tempStreak);
+
+            return { currentStreak, maxStreak };
+        }
+
+        // Smart queue algorithm
+        function calculateSmartQueue(completions, preferences, lastSection) {
+            const today = new Date().toISOString().split('T')[0];
+            const queueSize = preferences.queueSize || 15;
+            
+            // Get completion dates for each task
+            const taskCompletionMap = {};
+            completions.forEach(c => {
+                if (!taskCompletionMap[c.task_id]) {
+                    taskCompletionMap[c.task_id] = [];
+                }
+                taskCompletionMap[c.task_id].push(c.completion_date);
+            });
+
+            // Filter out completed tasks for today
+            const availableTasks = ALL_ITEMS.filter(task => {
+                const completedToday = completions.some(
+                    c => c.task_id === task.id && c.completion_date === today
+                );
+                return !completedToday;
+            });
+
+            // Score each task
+            const scoredTasks = availableTasks.map(task => {
+                let score = 0;
+                
+                // Priority weight
+                if (task.priority === 'high') score += 100;
+                else if (task.priority === 'medium') score += 50;
+                else score += 25;
+                
+                // Section continuity
+                if (lastSection && task.section === lastSection) {
+                    score += 30;
+                }
+                
+                // Recency - tasks not studied recently get boosted
+                const lastCompletionDate = taskCompletionMap[task.id] 
+                    ? Math.max(...taskCompletionMap[task.id].map(d => new Date(d).getTime()))
+                    : 0;
+                
+                if (lastCompletionDate) {
+                    const daysSince = (Date.now() - lastCompletionDate) / (1000 * 60 * 60 * 24);
+                    score += Math.min(daysSince * 2, 40); // Max 40 points for recency
+                }
+                
+                return { task, score };
+            });
+
+            // Sort by score
+            scoredTasks.sort((a, b) => b.score - a.score);
+
+            // Ensure priority distribution
+            const high = scoredTasks.filter(st => st.task.priority === 'high').slice(0, 5);
+            const medium = scoredTasks.filter(st => st.task.priority === 'medium').slice(0, 5);
+            const low = scoredTasks.filter(st => st.task.priority === 'low').slice(0, 5);
+
+            // Combine and take top queueSize
+            const queue = [...high, ...medium, ...low]
+                .sort((a, b) => b.score - a.score)
+                .slice(0, queueSize)
+                .map(st => st.task.id);
+
+            return queue;
+        }
+
+        // Adaptive goals
+        function adjustGoals(goals, todayCount) {
+            const history = goals.history || [];
+            history.push(todayCount);
+            
+            // Keep last 7 days
+            if (history.length > 7) {
+                history.shift();
+            }
+            
+            // Adjust if we have enough history
+            if (history.length >= 3) {
+                const avg = history.reduce((a, b) => a + b, 0) / history.length;
+                
+                if (avg > goals.daily * 1.5) {
+                    // Consistently exceeding - increase goal
+                    goals.daily = Math.min(goals.daily + 1, 15);
+                } else if (avg < goals.daily * 0.6 && goals.daily > 3) {
+                    // Consistently failing - decrease goal
+                    goals.daily = Math.max(goals.daily - 1, 3);
+                }
+            }
+            
+            goals.history = history;
+            return goals;
+        }
+
+        function downloadJSON(data, filename) {
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== HEATMAP (FIXED - 3 MONTHS) ====================
+        function ContributionHeatmap({ completions, dailyStats }) {
+            const [tooltip, setTooltip] = useState(null);
+            const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+
+            const { weeks, months } = useMemo(() => {
+                const endDate = new Date();
+                const startDate = new Date();
+                startDate.setDate(startDate.getDate() - 90); // 3 months (90 days)
+                startDate.setHours(0, 0, 0, 0);
+
+                const dateMap = {};
+                completions.forEach(c => {
+                    const date = c.completion_date;
+                    if (!dateMap[date]) {
+                        dateMap[date] = 0;
+                    }
+                    dateMap[date]++;
+                });
+
+                const weeks = [];
+                const months = [];
+                let currentWeek = [];
+                let currentDate = new Date(startDate);
+
+                // Pad to start on Sunday
+                const startDay = currentDate.getDay();
+                for (let i = 0; i < startDay; i++) {
+                    currentWeek.push(null);
+                }
+
+                let weekIndex = 0;
+                let lastMonth = -1;
+                
+                while (currentDate <= endDate) {
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    const count = dateMap[dateStr] || 0;
+                    const month = currentDate.getMonth();
+                    const studyMinutes = dailyStats[dateStr]?.study_minutes || 0;
+                    
+                    // Track month changes at the start of each month
+                    if (month !== lastMonth && currentDate.getDate() === 1) {
+                        months.push({
+                            name: currentDate.toLocaleDateString('en-US', { month: 'short' }),
+                            weekIndex: weekIndex
+                        });
+                        lastMonth = month;
+                    }
+                    
+                    currentWeek.push({
+                        date: dateStr,
+                        count: count,
+                        studyMinutes: studyMinutes,
+                        display: currentDate.toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                        })
+                    });
+
+                    if (currentWeek.length === 7) {
+                        weeks.push(currentWeek);
+                        currentWeek = [];
+                        weekIndex++;
+                    }
+
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+
+                if (currentWeek.length > 0) {
+                    while (currentWeek.length < 7) {
+                        currentWeek.push(null);
+                    }
+                    weeks.push(currentWeek);
+                }
+
+                return { weeks, months };
+            }, [completions, dailyStats]);
+
+            const getColor = (count) => {
+                if (count === 0) return 'bg-gray-200 dark:bg-gray-700';
+                if (count === 1) return 'bg-green-200 dark:bg-green-900';
+                if (count <= 3) return 'bg-green-300 dark:bg-green-800';
+                if (count <= 6) return 'bg-green-400 dark:bg-green-700';
+                return 'bg-green-500 dark:bg-green-600';
+            };
+
+            const handleMouseEnter = (day, e) => {
+                if (!day) return;
+                const hours = Math.floor(day.studyMinutes / 60);
+                const minutes = day.studyMinutes % 60;
+                const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+                
+                setTooltip({
+                    date: day.display,
+                    count: day.count,
+                    time: timeStr
+                });
+                
+                const rect = e.target.getBoundingClientRect();
+                setTooltipPos({ 
+                    x: rect.left + rect.width / 2, 
+                    y: rect.top - 10 
+                });
+            };
+
+            const handleMouseLeave = () => {
+                setTooltip(null);
+            };
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        📅 Study Activity (Last 3 Months)
+                    </h3>
+                    
+                    {/* Container with proper sizing */}
+                    <div className="overflow-hidden">
+                        {/* Month labels */}
+                        <div className="relative h-4 mb-1 ml-6">
+                            {months.map((month, idx) => (
+                                <div 
+                                    key={idx}
+                                    style={{ 
+                                        position: 'absolute',
+                                        left: `${month.weekIndex * 13}px`,
+                                        top: 0
+                                    }}
+                                    className="text-[10px] text-gray-500 dark:text-gray-400"
+                                >
+                                    {month.name}
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <div className="flex gap-1">
+                            {/* Day labels */}
+                            <div className="flex flex-col gap-[2px] justify-around pr-1">
+                                <div className="text-[9px] text-gray-500 dark:text-gray-400 h-[11px] leading-[11px]">Mon</div>
+                                <div className="text-[9px] text-gray-500 dark:text-gray-400 h-[11px] leading-[11px]">Wed</div>
+                                <div className="text-[9px] text-gray-500 dark:text-gray-400 h-[11px] leading-[11px]">Fri</div>
+                            </div>
+                            
+                            {/* Heatmap grid - no overflow */}
+                            <div className="flex gap-[2px]">
+                                {weeks.map((week, weekIdx) => (
+                                    <div key={weekIdx} className="flex flex-col gap-[2px]">
+                                        {week.map((day, dayIdx) => (
+                                            <div
+                                                key={dayIdx}
+                                                className={`contribution-day ${day ? getColor(day.count) : 'bg-transparent'}`}
+                                                onMouseEnter={(e) => day && handleMouseEnter(day, e)}
+                                                onMouseLeave={handleMouseLeave}
+                                            />
+                                        ))}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {/* Legend */}
+                    <div className="flex items-center justify-end gap-2 mt-3 text-xs text-gray-600 dark:text-gray-400">
+                        <span>Less</span>
+                        <div className="contribution-day bg-gray-200 dark:bg-gray-700"></div>
+                        <div className="contribution-day bg-green-200 dark:bg-green-900"></div>
+                        <div className="contribution-day bg-green-300 dark:bg-green-800"></div>
+                        <div className="contribution-day bg-green-400 dark:bg-green-700"></div>
+                        <div className="contribution-day bg-green-500 dark:bg-green-600"></div>
+                        <span>More</span>
+                    </div>
+
+                    {/* Tooltip */}
+                    {tooltip && (
+                        <div 
+                            className="tooltip"
+                            style={{
+                                left: `${tooltipPos.x}px`,
+                                top: `${tooltipPos.y}px`,
+                                transform: 'translate(-50%, -100%)'
+                            }}
+                        >
+                            <div className="font-semibold">{tooltip.date}</div>
+                            <div>Completed: {tooltip.count} topic{tooltip.count !== 1 ? 's' : ''}</div>
+                            <div>Study time: {tooltip.time}</div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== ANALYTICS PANEL ====================
+        function AnalyticsPanel({ completions, dailyStats, onSectionClick }) {
+            const analytics = useMemo(() => {
+                const sectionProgress = {};
+                const priorityProgress = { high: 0, medium: 0, low: 0 };
+                const today = new Date().toISOString().split('T')[0];
+                
+                ALL_ITEMS.forEach(item => {
+                    const section = item.section;
+                    if (!sectionProgress[section]) {
+                        sectionProgress[section] = { total: 0, completed: 0 };
+                    }
+                    sectionProgress[section].total++;
+                    
+                    const isCompleted = completions.some(c => 
+                        c.task_id === item.id && c.completion_date === today
+                    );
+                    
+                    if (isCompleted) {
+                        sectionProgress[section].completed++;
+                        if (item.priority) {
+                            priorityProgress[item.priority]++;
+                        }
+                    }
+                });
+
+                const sectionPercentages = Object.entries(sectionProgress).map(([name, data]) => ({
+                    name,
+                    percentage: Math.round((data.completed / data.total) * 100),
+                    completed: data.completed,
+                    total: data.total
+                })).sort((a, b) => b.percentage - a.percentage);
+
+                // Calculate total study time
+                const totalStudyMinutes = Object.values(dailyStats).reduce((acc, day) => {
+                    return acc + (day.study_minutes || 0);
+                }, 0);
+
+                return {
+                    sectionPercentages,
+                    priorityProgress,
+                    totalCompleted: completions.length,
+                    uniqueDays: new Set(completions.map(c => c.completion_date)).size,
+                    totalStudyHours: Math.floor(totalStudyMinutes / 60),
+                    totalStudyMinutes: totalStudyMinutes % 60
+                };
+            }, [completions, dailyStats]);
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+                    <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                        📊 Progress Analytics
+                    </h3>
+                    
+                    {/* Priority breakdown */}
+                    <div className="mb-4">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Today's Priority</div>
+                        <div className="flex gap-2">
+                            <div className="flex-1 bg-red-50 dark:bg-red-900/20 rounded p-2 text-center">
+                                <div className="text-lg font-bold text-red-600 dark:text-red-400">
+                                    {analytics.priorityProgress.high}
+                                </div>
+                                <div className="text-[10px] text-gray-600 dark:text-gray-400">High</div>
+                            </div>
+                            <div className="flex-1 bg-yellow-50 dark:bg-yellow-900/20 rounded p-2 text-center">
+                                <div className="text-lg font-bold text-yellow-600 dark:text-yellow-400">
+                                    {analytics.priorityProgress.medium}
+                                </div>
+                                <div className="text-[10px] text-gray-600 dark:text-gray-400">Med</div>
+                            </div>
+                            <div className="flex-1 bg-green-50 dark:bg-green-900/20 rounded p-2 text-center">
+                                <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                                    {analytics.priorityProgress.low}
+                                </div>
+                                <div className="text-[10px] text-gray-600 dark:text-gray-400">Low</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Section progress */}
+                    <div className="space-y-2 mb-4">
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Section Progress (Top 5)</div>
+                        {analytics.sectionPercentages.slice(0, 5).map(section => (
+                            <div 
+                                key={section.name} 
+                                className="text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 p-1 rounded"
+                                onClick={() => onSectionClick && onSectionClick(section.name)}
+                            >
+                                <div className="flex justify-between mb-1">
+                                    <span className="text-gray-700 dark:text-gray-300 truncate">
+                                        {section.name}
+                                    </span>
+                                    <span className="text-gray-500 dark:text-gray-400 font-mono">
+                                        {section.completed}/{section.total}
+                                    </span>
+                                </div>
+                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                    <div 
+                                        className="progress-bar bg-blue-500 dark:bg-blue-400 h-2 rounded-full"
+                                        style={{ width: `${section.percentage}%` }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Study time stats */}
+                    <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600 dark:text-gray-400">Total study time</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                {analytics.totalStudyHours}h {analytics.totalStudyMinutes}m
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-600 dark:text-gray-400">Total completions</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                {analytics.totalCompleted}
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                            <span className="text-gray-600 dark:text-gray-400">Active days</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                {analytics.uniqueDays}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== ADAPTIVE GOALS WIDGET ====================
+        function AdaptiveGoalsWidget({ completions, goals, onUpdateGoals, dailyStats }) {
+            const today = new Date().toISOString().split('T')[0];
+            const todayCount = completions.filter(c => c.completion_date === today).length;
+            
+            // Calculate week progress
+            const weekStart = new Date();
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            const weekCount = completions.filter(c => {
+                const date = new Date(c.completion_date);
+                return date >= weekStart;
+            }).length;
+            
+            const dailyProgress = Math.min(100, (todayCount / goals.daily) * 100);
+            const weeklyProgress = Math.min(100, (weekCount / goals.weekly) * 100);
+
+            const [editing, setEditing] = useState(false);
+            const [tempGoals, setTempGoals] = useState(goals);
+
+            const handleSave = () => {
+                onUpdateGoals(tempGoals);
+                setEditing(false);
+            };
+
+            // Show trend
+            const history = goals.history || [];
+            const trend = history.length >= 3 
+                ? (history[history.length - 1] > history[0] ? '📈' : history[history.length - 1] < history[0] ? '📉' : '➡️')
+                : '➡️';
+
+            return (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                            🎯 Adaptive Goals {trend}
+                        </h3>
+                        <button
+                            onClick={() => editing ? handleSave() : setEditing(true)}
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                        >
+                            {editing ? 'Save' : 'Edit'}
+                        </button>
+                    </div>
+
+                    <div className="space-y-3">
+                        {/* Daily goal */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-600 dark:text-gray-400">Daily</span>
+                                {editing ? (
+                                    <input
+                                        type="number"
+                                        value={tempGoals.daily}
+                                        onChange={(e) => setTempGoals({...tempGoals, daily: parseInt(e.target.value) || 0})}
+                                        className="w-16 px-2 py-1 text-xs border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                    />
+                                ) : (
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {todayCount}/{goals.daily}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div 
+                                    className="bg-green-500 dark:bg-green-400 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${dailyProgress}%` }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Weekly goal */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-1">
+                                <span className="text-gray-600 dark:text-gray-400">Weekly</span>
+                                {editing ? (
+                                    <input
+                                        type="number"
+                                        value={tempGoals.weekly}
+                                        onChange={(e) => setTempGoals({...tempGoals, weekly: parseInt(e.target.value) || 0})}
+                                        className="w-16 px-2 py-1 text-xs border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                    />
+                                ) : (
+                                    <span className="font-semibold text-gray-900 dark:text-gray-100">
+                                        {weekCount}/{goals.weekly}
+                                    </span>
+                                )}
+                            </div>
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                <div 
+                                    className="bg-blue-500 dark:bg-blue-400 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${weeklyProgress}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {history.length >= 3 && !editing && (
+                        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                            7-day avg: {Math.round(history.reduce((a, b) => a + b, 0) / history.length)} tasks/day
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== STUDY TIMER ====================
+        function StudyTimer({ taskId, taskName, onComplete }) {
+            const [isRunning, setIsRunning] = useState(false);
+            const [seconds, setSeconds] = useState(0);
+            const intervalRef = useRef(null);
+
+            useEffect(() => {
+                if (isRunning) {
+                    intervalRef.current = setInterval(() => {
+                        setSeconds(s => s + 1);
+                    }, 1000);
+                } else {
+                    if (intervalRef.current) {
+                        clearInterval(intervalRef.current);
+                    }
+                }
+
+                return () => {
+                    if (intervalRef.current) {
+                        clearInterval(intervalRef.current);
+                    }
+                };
+            }, [isRunning]);
+
+            const handleStart = () => {
+                setIsRunning(true);
+            };
+
+            const handleStop = () => {
+                setIsRunning(false);
+                if (seconds > 0) {
+                    onComplete(Math.floor(seconds / 60));
+                    setSeconds(0);
+                }
+            };
+
+            const formatTime = (secs) => {
+                const hours = Math.floor(secs / 3600);
+                const mins = Math.floor((secs % 3600) / 60);
+                const s = secs % 60;
+                return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            };
+
+            return (
+                <div className="flex items-center gap-2 mt-2">
+                    <div className={`text-xs font-mono text-gray-700 dark:text-gray-300 ${isRunning ? 'timer-active' : ''}`}>
+                        ⏱️ {formatTime(seconds)}
+                    </div>
+                    {!isRunning ? (
+                        <button
+                            onClick={handleStart}
+                            className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                        >
+                            Start
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleStop}
+                            className="text-xs px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                        >
+                            Stop
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
+        // ==================== TASK CARD ====================
+        const TaskCard = React.memo(function TaskCard({ task, completions, onToggle, onAddNote, notes, onTimerComplete, showTimer }) {
+            const today = new Date().toISOString().split('T')[0];
+            const todayCompletion = completions.find(
+                c => c.task_id === task.id && c.completion_date === today
+            );
+            const isCompletedToday = !!todayCompletion;
+
+            const [showNoteInput, setShowNoteInput] = useState(false);
+            const [noteText, setNoteText] = useState(notes[task.id] || '');
+
+            const handleSaveNote = () => {
+                onAddNote(task.id, noteText);
+                setShowNoteInput(false);
+            };
+
+            // Format completion timestamp
+            const formatTimestamp = (isoString) => {
+                if (!isoString) return '';
+                const date = new Date(isoString);
+                const timeStr = date.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: true 
+                });
+                const dateStr = date.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                return `${dateStr} at ${timeStr}`;
+            };
+
+            const priorityColors = {
+                high: 'border-red-500',
+                medium: 'border-yellow-500',
+                low: 'border-green-500'
+            };
+
+            const priorityBadges = {
+                high: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                medium: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                low: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+            };
+
+            return (
+                <div className={`task-card bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-3 border-l-4 ${
+                    isCompletedToday 
+                        ? 'border-green-500' 
+                        : task.priority 
+                            ? priorityColors[task.priority]
+                            : 'border-gray-200 dark:border-gray-700'
+                }`}>
+                    <div className="flex items-start gap-3">
+                        <input
+                            type="checkbox"
+                            checked={isCompletedToday}
+                            onChange={() => onToggle(task.id, today, isCompletedToday)}
+                            className="mt-1 w-5 h-5 text-green-600 rounded focus:ring-2 focus:ring-green-500 cursor-pointer flex-shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between gap-2">
+                                <h3 className={`font-medium flex-1 ${isCompletedToday ? 'line-through text-gray-500 dark:text-gray-600' : 'text-gray-900 dark:text-gray-100'}`}>
+                                    {task.name}
+                                </h3>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    {isCompletedToday && todayCompletion.completed_at && (
+                                        <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">
+                                            ✓ {formatTimestamp(todayCompletion.completed_at)}
+                                        </span>
+                                    )}
+                                    {task.priority && !isCompletedToday && (
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${priorityBadges[task.priority]}`}>
+                                            {task.priority}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-sm">
+                                <span className="text-blue-600 dark:text-blue-400 font-medium">
+                                    ⏱️ {task.time}h
+                                </span>
+                                {task.section !== 'Projects' && (
+                                    <span className="text-gray-500 dark:text-gray-400 text-xs">
+                                        📚 {task.section}
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Timer */}
+                            {showTimer && !isCompletedToday && (
+                                <StudyTimer
+                                    taskId={task.id}
+                                    taskName={task.name}
+                                    onComplete={(minutes) => onTimerComplete(task.id, minutes)}
+                                />
+                            )}
+
+                            {/* Note section */}
+                            {(notes[task.id] || showNoteInput) && (
+                                <div className="mt-2 text-sm">
+                                    {showNoteInput ? (
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                value={noteText}
+                                                onChange={(e) => setNoteText(e.target.value)}
+                                                placeholder="Add a note..."
+                                                className="flex-1 px-2 py-1 text-xs border dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                onKeyDown={(e) => e.key === 'Enter' && handleSaveNote()}
+                                            />
+                                            <button
+                                                onClick={handleSaveNote}
+                                                className="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                            >
+                                                Save
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 p-2 rounded">
+                                            📝 {notes[task.id]}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {!showNoteInput && !notes[task.id] && (
+                                <button
+                                    onClick={() => setShowNoteInput(true)}
+                                    className="mt-2 text-xs text-gray-500 hover:text-blue-600 dark:hover:text-blue-400"
+                                >
+                                    + Add note
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            );
+        });
+
+        // ==================== KEYBOARD SHORTCUTS HELP ====================
+        function ShortcutsHelp({ show, onClose }) {
+            if (!show) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={onClose}>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                            ⌨️ Keyboard Shortcuts
+                        </h2>
+                        <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">Toggle dark mode</span>
+                                <kbd className="kbd">D</kbd>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">Focus search</span>
+                                <kbd className="kbd">/</kbd>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">Toggle focus mode</span>
+                                <kbd className="kbd">F</kbd>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">Export data</span>
+                                <kbd className="kbd">E</kbd>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">Show help</span>
+                                <kbd className="kbd">?</kbd>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-gray-600 dark:text-gray-400">Close modal</span>
+                                <kbd className="kbd">ESC</kbd>
+                            </div>
+                        </div>
+                        <button
+                            onClick={onClose}
+                            className="mt-4 w-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 font-medium py-2 px-4 rounded"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // ==================== MAIN APP ====================
+        function App() {
+            // Initialize with data from localStorage immediately (synchronous)
+            const [completions, setCompletions] = useState(() => {
+                const data = StorageManager.getCompletions();
+                console.log('Initial load - Completions:', data.length);
+                return data;
+            });
+            const [notes, setNotes] = useState(() => {
+                const data = StorageManager.getNotes();
+                console.log('Initial load - Notes:', Object.keys(data).length);
+                return data;
+            });
+            const [goals, setGoals] = useState(() => {
+                const data = StorageManager.getGoals();
+                console.log('Initial load - Goals:', data);
+                return data;
+            });
+            const [dailyStats, setDailyStats] = useState(() => {
+                const data = StorageManager.getDailyStats();
+                console.log('Initial load - Daily stats entries:', Object.keys(data).length);
+                return data;
+            });
+            const [loading, setLoading] = useState(false);
+            const [filterSection, setFilterSection] = useState('all');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [darkMode, setDarkMode] = useState(() => {
+                const data = StorageManager.getDarkMode();
+                console.log('Initial load - Dark mode:', data);
+                return data;
+            });
+            const [preferences, setPreferences] = useState(() => {
+                const data = StorageManager.getPreferences();
+                console.log('Initial load - Preferences:', data);
+                return data;
+            });
+            const [focusMode, setFocusMode] = useState(false);
+            const [showShortcuts, setShowShortcuts] = useState(false);
+            const [visibleQueue, setVisibleQueue] = useState(() => {
+                const data = StorageManager.getQueueState();
+                console.log('Initial load - Queue:', data.visibleTasks?.length || 0);
+                return data.visibleTasks || [];
+            });
+            const [lastSection, setLastSection] = useState(() => {
+                const data = StorageManager.getLastSection();
+                console.log('Initial load - Last section:', data);
+                return data;
+            });
+
+            const searchInputRef = useRef(null);
+
+            // Apply dark mode on mount
+            useEffect(() => {
+                if (darkMode) {
+                    document.body.classList.add('dark');
+                }
+                console.log('✅ App mounted with persistent data');
+            }, []);
+
+            // Update visible queue when needed
+            useEffect(() => {
+                if (!loading) {
+                    const newQueue = calculateSmartQueue(completions, preferences, lastSection);
+                    setVisibleQueue(newQueue);
+                    StorageManager.saveQueueState({ visibleTasks: newQueue });
+                }
+            }, [completions, preferences, lastSection, loading]);
+
+            // Keyboard shortcuts
+            useEffect(() => {
+                const handleKeyDown = (e) => {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                        if (e.key === 'Escape') {
+                            e.target.blur();
+                        }
+                        return;
+                    }
+
+                    switch(e.key.toLowerCase()) {
+                        case 'd':
+                            toggleDarkMode();
+                            break;
+                        case '/':
+                            e.preventDefault();
+                            searchInputRef.current?.focus();
+                            break;
+                        case 'f':
+                            setFocusMode(f => !f);
+                            break;
+                        case 'e':
+                            handleExport();
+                            break;
+                        case '?':
+                            setShowShortcuts(true);
+                            break;
+                        case 'escape':
+                            setShowShortcuts(false);
+                            setFocusMode(false);
+                            break;
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyDown);
+                return () => window.removeEventListener('keydown', handleKeyDown);
+            }, [darkMode]);
+
+            // Handlers
+            const handleToggle = useCallback((taskId, date, isCompleted) => {
+                console.log('Toggle task:', taskId, 'Date:', date, 'Current state:', isCompleted);
+                
+                let newCompletions;
+                if (isCompleted) {
+                    newCompletions = completions.filter(
+                        c => !(c.task_id === taskId && c.completion_date === date)
+                    );
+                    console.log('Unchecking task - New count:', newCompletions.length);
+                } else {
+                    const now = new Date();
+                    newCompletions = [...completions, {
+                        id: `${taskId}-${date}-${Date.now()}`,
+                        task_id: taskId,
+                        completion_date: date,
+                        actual_minutes: 0,
+                        completed_at: now.toISOString() // Add timestamp
+                    }];
+                    console.log('Checking task - New count:', newCompletions.length);
+
+                    // Update last section for continuity
+                    const task = ALL_ITEMS.find(t => t.id === taskId);
+                    if (task) {
+                        setLastSection(task.section);
+                        StorageManager.saveLastSection(task.section);
+                    }
+
+                    // Update daily stats
+                    const newDailyStats = { ...dailyStats };
+                    if (!newDailyStats[date]) {
+                        newDailyStats[date] = { tasks_completed: 0, study_minutes: 0 };
+                    }
+                    newDailyStats[date].tasks_completed++;
+                    setDailyStats(newDailyStats);
+                    StorageManager.saveDailyStats(newDailyStats);
+                    console.log('Updated daily stats for', date);
+
+                    // Adjust goals adaptively
+                    const todayCount = newCompletions.filter(c => c.completion_date === date).length;
+                    const adjustedGoals = adjustGoals({ ...goals }, todayCount);
+                    setGoals(adjustedGoals);
+                    StorageManager.saveGoals(adjustedGoals);
+                }
+                
+                // Save completions to localStorage
+                StorageManager.saveCompletions(newCompletions);
+                console.log('✅ Saved to localStorage - Total completions:', newCompletions.length);
+                
+                // Update state
+                setCompletions(newCompletions);
+            }, [completions, dailyStats, goals, lastSection]);
+
+            const handleAddNote = useCallback((taskId, note) => {
+                const newNotes = { ...notes, [taskId]: note };
+                StorageManager.saveNotes(newNotes);
+                setNotes(newNotes);
+            }, [notes]);
+
+            const handleUpdateGoals = useCallback((newGoals) => {
+                StorageManager.saveGoals(newGoals);
+                setGoals(newGoals);
+            }, []);
+
+            const handleTimerComplete = useCallback((taskId, minutes) => {
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Update completion with actual time
+                const newCompletions = completions.map(c => {
+                    if (c.task_id === taskId && c.completion_date === today) {
+                        return { ...c, actual_minutes: (c.actual_minutes || 0) + minutes };
+                    }
+                    return c;
+                });
+                setCompletions(newCompletions);
+                StorageManager.saveCompletions(newCompletions);
+
+                // Update daily stats
+                const newDailyStats = { ...dailyStats };
+                if (!newDailyStats[today]) {
+                    newDailyStats[today] = { tasks_completed: 0, study_minutes: 0 };
+                }
+                newDailyStats[today].study_minutes = (newDailyStats[today].study_minutes || 0) + minutes;
+                setDailyStats(newDailyStats);
+                StorageManager.saveDailyStats(newDailyStats);
+            }, [completions, dailyStats]);
+
+            const toggleDarkMode = useCallback(() => {
+                const newDarkMode = !darkMode;
+                setDarkMode(newDarkMode);
+                StorageManager.saveDarkMode(newDarkMode);
+                document.body.classList.toggle('dark');
+            }, [darkMode]);
+
+            const handleExport = useCallback(() => {
+                const data = StorageManager.exportData();
+                downloadJSON(data, `ai-study-tracker-${new Date().toISOString().split('T')[0]}.json`);
+            }, []);
+
+            const updatePreferences = useCallback((newPrefs) => {
+                const updated = { ...preferences, ...newPrefs };
+                setPreferences(updated);
+                StorageManager.savePreferences(updated);
+            }, [preferences]);
+
+            const handleSectionClick = useCallback((section) => {
+                setFilterSection(section);
+            }, []);
+
+            // Computed values
+            const sections = useMemo(() => {
+                const sectionSet = new Set(ALL_ITEMS.map(t => t.section));
+                return ['all', ...Array.from(sectionSet).sort((a, b) => {
+                    if (a === 'Projects') return 1;
+                    if (b === 'Projects') return -1;
+                    const aNum = parseInt(a.split('.')[0]);
+                    const bNum = parseInt(b.split('.')[0]);
+                    return aNum - bNum;
+                })];
+            }, []);
+
+            const filteredTasks = useMemo(() => {
+                const today = new Date().toISOString().split('T')[0];
+                
+                // In focus mode, only show top 5 from queue
+                if (focusMode) {
+                    return ALL_ITEMS
+                        .filter(task => visibleQueue.slice(0, 5).includes(task.id))
+                        .filter(task => {
+                            const isCompletedToday = completions.some(
+                                c => c.task_id === task.id && c.completion_date === today
+                            );
+                            return !isCompletedToday;
+                        });
+                }
+                
+                // Normal filtering - show ALL tasks, not filtered by queue
+                return ALL_ITEMS.filter(task => {
+                    const matchesSection = filterSection === 'all' || task.section === filterSection;
+                    const matchesSearch = task.name.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchesPriority = preferences.priorityFilter === 'all' || 
+                                          task.priority === preferences.priorityFilter ||
+                                          task.section === 'Projects';
+                    
+                    const isCompletedToday = completions.some(
+                        c => c.task_id === task.id && c.completion_date === today
+                    );
+                    
+                    const matchesCompleted = preferences.showCompleted || !isCompletedToday;
+                    
+                    return matchesSection && matchesSearch && matchesPriority && matchesCompleted;
+                });
+            }, [filterSection, searchQuery, preferences, completions, focusMode]);
+
+            const stats = useMemo(() => {
+                const today = new Date().toISOString().split('T')[0];
+                const completedToday = completions.filter(c => c.completion_date === today).length;
+
+                const totalHoursCompleted = Object.values(dailyStats).reduce((acc, day) => {
+                    return acc + (day.study_minutes || 0);
+                }, 0) / 60;
+
+                const { currentStreak, maxStreak } = calculateGlobalStreak(completions);
+
+                return { 
+                    completedToday, 
+                    totalTasks: ALL_ITEMS.length, 
+                    totalHoursCompleted: Math.floor(totalHoursCompleted), 
+                    currentStreak, 
+                    maxStreak 
+                };
+            }, [completions, dailyStats]);
+
+            if (loading) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                        <div className="text-xl text-gray-600 dark:text-gray-400">Loading...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className={`min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 py-8 px-4 transition-colors duration-200 ${focusMode ? 'focus-mode-active' : ''}`}>
+                    <div className="max-w-7xl mx-auto">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Main Content */}
+                            <div className="lg:col-span-2">
+                                {/* Header */}
+                                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div>
+                                            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                                                🎯 AI Study Tracker Pro
+                                            </h1>
+                                            <p className="text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-3">
+                                                {focusMode ? '🎯 Focus Mode Active' : 'Master AI Engineering • Track Progress • Build Momentum'}
+                                                <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
+                                                    💾 Auto-save • {completions.length} tasks saved
+                                                </span>
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setShowShortcuts(true)}
+                                                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-xl"
+                                                title="Keyboard shortcuts (?)"
+                                            >
+                                                ⌨️
+                                            </button>
+                                            <button
+                                                onClick={handleExport}
+                                                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-xl hidden-in-focus"
+                                                title="Export data (E)"
+                                            >
+                                                💾
+                                            </button>
+                                            <button
+                                                onClick={toggleDarkMode}
+                                                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-2xl"
+                                                title="Toggle dark mode (D)"
+                                            >
+                                                {darkMode ? '☀️' : '🌙'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Global Streaks */}
+                                    <div className="flex gap-4 mb-4">
+                                        <div className="flex items-center gap-2 bg-orange-50 dark:bg-orange-900/20 px-4 py-2 rounded-lg flex-1">
+                                            <span className={stats.currentStreak > 0 ? 'streak-flame text-2xl' : 'text-2xl'}>🔥</span>
+                                            <div>
+                                                <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{stats.currentStreak}</div>
+                                                <div className="text-xs text-gray-600 dark:text-gray-400">Day Streak</div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/20 px-4 py-2 rounded-lg flex-1">
+                                            <span className="text-2xl">🏆</span>
+                                            <div>
+                                                <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">{stats.maxStreak}</div>
+                                                <div className="text-xs text-gray-600 dark:text-gray-400">Best Streak</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Stats */}
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div className="bg-green-50 dark:bg-green-900/20 rounded p-3 text-center">
+                                            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{stats.completedToday}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Today</div>
+                                        </div>
+                                        <div className="bg-blue-50 dark:bg-blue-900/20 rounded p-3 text-center">
+                                            <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{ALL_ITEMS.length}</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Total Topics</div>
+                                        </div>
+                                        <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded p-3 text-center">
+                                            <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{stats.totalHoursCompleted}h</div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400">Studied</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Filters & Controls */}
+                                {!focusMode && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+                                        <div className="flex flex-col gap-3">
+                                            <div className="flex flex-col sm:flex-row gap-3">
+                                                <select
+                                                    value={filterSection}
+                                                    onChange={(e) => setFilterSection(e.target.value)}
+                                                    className="flex-1 px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                >
+                                                    {sections.map(section => (
+                                                        <option key={section} value={section}>
+                                                            {section === 'all' ? '📚 All Sections' : section}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <input
+                                                    ref={searchInputRef}
+                                                    type="text"
+                                                    placeholder="Search topics... (press /)"
+                                                    value={searchQuery}
+                                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                                    className="flex-1 px-4 py-2 border dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500"
+                                                />
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap gap-2 items-center">
+                                                <select
+                                                    value={preferences.priorityFilter}
+                                                    onChange={(e) => updatePreferences({ priorityFilter: e.target.value })}
+                                                    className="px-3 py-1.5 text-sm border dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                >
+                                                    <option value="all">All Priorities</option>
+                                                    <option value="high">High Priority</option>
+                                                    <option value="medium">Medium Priority</option>
+                                                    <option value="low">Low Priority</option>
+                                                </select>
+                                                
+                                                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={preferences.showCompleted}
+                                                        onChange={(e) => updatePreferences({ showCompleted: e.target.checked })}
+                                                        className="rounded"
+                                                    />
+                                                    Show completed
+                                                </label>
+                                                
+                                                <button
+                                                    onClick={() => setFocusMode(!focusMode)}
+                                                    className={`ml-auto px-3 py-1.5 text-sm rounded-lg ${
+                                                        focusMode 
+                                                            ? 'bg-purple-500 text-white' 
+                                                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                                    }`}
+                                                    title="Focus Mode (F)"
+                                                >
+                                                    {focusMode ? '👁️ Focus ON' : '👁️ Focus OFF'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                            {focusMode ? 'Showing top 5 priority tasks' : `Showing ${filteredTasks.length} of ${ALL_ITEMS.length} topics`}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Task List */}
+                                <div className="space-y-2">
+                                    {filteredTasks.map(task => (
+                                        <TaskCard
+                                            key={task.id}
+                                            task={task}
+                                            completions={completions}
+                                            onToggle={handleToggle}
+                                            onAddNote={handleAddNote}
+                                            notes={notes}
+                                            onTimerComplete={handleTimerComplete}
+                                            showTimer={!focusMode}
+                                        />
+                                    ))}
+                                </div>
+
+                                {filteredTasks.length === 0 && (
+                                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center text-gray-500 dark:text-gray-400">
+                                        {focusMode ? '🎉 All focus tasks completed!' : 'No items in queue 🔍'}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Sidebar */}
+                            <div className={`lg:col-span-1 ${focusMode ? 'hidden-in-focus' : ''}`}>
+                                <div className="sticky top-8 space-y-4">
+                                    <AdaptiveGoalsWidget 
+                                        completions={completions}
+                                        goals={goals}
+                                        onUpdateGoals={handleUpdateGoals}
+                                        dailyStats={dailyStats}
+                                    />
+                                    <AnalyticsPanel 
+                                        completions={completions} 
+                                        dailyStats={dailyStats}
+                                        onSectionClick={handleSectionClick}
+                                    />
+                                    <ContributionHeatmap completions={completions} dailyStats={dailyStats} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <ShortcutsHelp show={showShortcuts} onClose={() => setShowShortcuts(false)} />
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
